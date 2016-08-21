@@ -1,0 +1,223 @@
+Network Working Group                                       E. Rescorla
+Request for Comments: 2631                                    RTFM Inc.
+Category: Standards Track                                     June 1999
+
+
+                  Diffie-Hellman Key Agreement Method
+                    (minimal version for ELEC5616)
+
+Abstract
+
+   This document standardizes one particular Diffie-Hellman variant,
+   based on the ANSI X9.42 draft, developed by the ANSI X9F1 working
+   group. Diffie-Hellman is a key agreement algorithm used by two
+   parties to agree on a shared secret. An algorithm for converting the
+   shared secret into an arbitrary amount of keying material is
+   provided. The resulting keying material is used as a symmetric
+   encryption key.  The Diffie-Hellman variant described requires the
+   recipient to have a certificate, but the originator may have a static
+   key pair (with the public key placed in a certificate) or an
+   ephemeral key pair.
+
+Table of Contents
+
+   1. Introduction  . . . . . . . . . . . . . . . . . . . . . . .   2
+   1.1. Requirements Terminology  . . . . . . . . . . . . . . . .   2
+   2. Overview Of Method  . . . . . . . . . . . . . . . . . . . .   2
+   2.1. Key Agreement . . . . . . . . . . . . . . . . . . . . . .   2
+   2.1.1. Generation of ZZ  . . . . . . . . . . . . . . . . . . .   3
+   2.1.2. Generation of Keying Material . . . . . . . . . . . . .   3
+   2.1.3. KEK Computation . . . . . . . . . . . . . . . . . . . .   4
+   2.1.4. Keylengths for common algorithms  . . . . . . . . . . .   5
+   Security Considerations  . . . . . . . . . . . . . . . . . . .  12
+
+1.  Introduction
+
+   In [DH76] Diffie and Hellman describe a means for two parties to
+   agree upon a shared secret in such a way that the secret will be
+   unavailable to eavesdroppers. This secret may then be converted into
+   cryptographic keying material for other (symmetric) algorithms.  A
+   large number of minor variants of this process exist. This document
+   describes one such variant, based on the ANSI X9.42 specification.
+
+1.1.  Requirements Terminology
+
+   Keywords "MUST", "MUST NOT", "REQUIRED", "SHOULD", "SHOULD NOT" and
+   "MAY" that appear in this document are to be interpreted as described
+   in [RFC2119].
+
+2.  Overview Of Method
+
+   Diffie-Hellman key agreement requires that both the sender and
+   recipient of a message have key pairs. By combining one's private key
+   and the other party's public key, both parties can compute the same
+   shared secret number. This number can then be converted into
+   cryptographic keying material.  That keying material is typically
+   used as a key-encryption key (KEK) to encrypt (wrap) a content-
+   encryption key (CEK) which is in turn used to encrypt the message
+   data.
+
+2.1.  Key Agreement
+
+   The first stage of the key agreement process is to compute a shared
+   secret number, called ZZ.  When the same originator and recipient
+   public/private key pairs are used, the same ZZ value will result.
+   The ZZ value is then converted into a shared symmetric cryptographic
+   key. When the originator employs a static private/public key pair,
+   the introduction of a public random value ensures that the resulting
+   symmetric key will be different for each key agreement.
+
+2.1.1.  Generation of ZZ
+
+   X9.42 defines that the shared secret ZZ is generated as follows:
+
+     ZZ = g ^ (xb * xa) mod p
+
+   Note that the individual parties actually perform the computations:
+
+     ZZ = (yb ^ xa)  mod p  = (ya ^ xb)  mod p
+
+   where ^ denotes exponentiation
+
+         ya is party a's public key; ya = g ^ xa mod p
+         yb is party b's public key; yb = g ^ xb mod p
+         xa is party a's private key
+         xb is party b's private key
+         p is a large prime
+         q is a large prime
+         g = h^{(p-1)/q} mod p, where
+         h is any integer with 1 < h < p-1 such that h{(p-1)/q} mod p > 1
+           (g has order q mod p; i.e. g^q mod p = 1 if g!=1)
+         j a large integer such that p=qj + 1
+         (See Section 2.2 for criteria for keys and parameters)
+
+   In [CMS], the recipient's key is identified by the CMS
+   RecipientIdentifier, which points to the recipient's certificate.
+   The sender's public key is identified using the
+   OriginatorIdentifierOrKey field, either by reference to the sender's
+   certificate or by inline inclusion of a public key.
+
+2.1.2.  Generation of Keying Material
+
+   X9.42 provides an algorithm for generating an essentially arbitrary
+   amount of keying material from ZZ. Our algorithm is derived from that
+   algorithm by mandating some optional fields and omitting others.
+
+     KM = H ( ZZ || OtherInfo)
+
+   H is the message digest function SHA-1 [FIPS-180] ZZ is the shared
+   secret value computed in Section 2.1.1. Leading zeros MUST be
+   preserved, so that ZZ occupies as many octets as p. For instance, if
+   p is 1024 bits, ZZ should be 128 bytes long.  OtherInfo is the DER
+   encoding of the following structure:
+
+     OtherInfo ::= SEQUENCE {
+       keyInfo KeySpecificInfo,
+       partyAInfo [0] OCTET STRING OPTIONAL,
+       suppPubInfo [2] OCTET STRING
+     }
+
+     KeySpecificInfo ::= SEQUENCE {
+       algorithm OBJECT IDENTIFIER,
+       counter OCTET STRING SIZE (4..4) }
+
+   Note that these ASN.1 definitions use EXPLICIT tagging. (In ASN.1,
+   EXPLICIT tagging is implicit unless IMPLICIT is explicitly
+   specified.)
+
+   algorithm is the ASN.1 algorithm OID of the CEK wrapping algorithm
+     with which this KEK will be used. Note that this is NOT an
+     AlgorithmIdentifier, but simply the OBJECT IDENTIFIER. No
+     parameters are used.
+
+   counter is a 32 bit number, represented in network byte order. Its
+     initial value is 1 for any ZZ, i.e. the byte sequence 00 00 00 01
+     (hex), and it is incremented by one every time the above key
+     generation function is run for a given KEK.
+
+   partyAInfo is a random string provided by the sender. In CMS, it is
+     provided as a parameter in the UserKeyingMaterial field (encoded as
+     an OCTET STRING). If provided, partyAInfo MUST contain 512 bits.
+
+   suppPubInfo is the length of the generated KEK, in bits, represented
+     as a 32 bit number in network byte order. E.g. for 3DES it would be
+     the byte sequence 00 00 00 C0.
+
+   To generate a KEK, one generates one or more KM blocks (incrementing
+   counter appropriately) until enough material has been generated.  The
+   KM blocks are concatenated left to right I.e. KM(counter=1) ||
+   KM(counter=2)...
+
+   Note that the only source of secret entropy in this computation is
+   ZZ.  Even if a string longer than ZZ is generated, the effective key
+   space of the KEK is limited by the size of ZZ, in addition to any
+   security level considerations imposed by the parameters p and q.
+   However, if partyAInfo is different for each message, a different KEK
+   will be generated for each message. Note that partyAInfo MUST be used
+   in Static-Static mode, but MAY appear in Ephemeral-Static mode.
+
+2.1.3.  KEK Computation
+
+   Each key encryption algorithm requires a specific size key (n). The
+   KEK is generated by mapping the left n-most bytes of KM onto the key.
+   For 3DES, which requires 192 bits of keying material, the algorithm
+   must be run twice, once with a counter value of 1 (to generate K1',
+   K2', and the first 32 bits of K3') and once with a counter value of 2
+   (to generate the last 32 bits of K3). K1',K2' and K3' are then parity
+   adjusted to generate the 3 DES keys K1,K2 and K3.  For RC2-128, which
+   requires 128 bits of keying material, the algorithm is run once, with
+   a counter value of 1, and the left-most 128 bits are directly
+   converted to an RC2 key. Similarly, for RC2-40, which requires 40
+   bits of keying material, the algorithm is run once, with a counter
+   value of 1, and the leftmost 40 bits are used as the key.
+
+2.1.4.  Keylengths for common algorithms
+
+   Some common key encryption algorithms have KEKs of the following
+   lengths.
+
+     3-key 3DES      192 bits
+     RC2-128        128 bits
+     RC2-40         40 bits
+
+   RC2 effective key lengths are equal to RC2 real key lengths.
+
+2.2.  Key and Parameter Requirements
+
+   X9.42 requires that the group parameters be of the form p=jq + 1
+   where q is a large prime of length m and j>=2. An algorithm for
+   generating primes of this form (derived from the algorithms in FIPS
+   PUB 186-1[FIPS-186] and [X942]can be found in appendix A.
+
+   X9.42 requires that the private key x be in the interval [2, (q -
+   2)].  x should be randomly generated in this interval. y is then
+   computed by calculating g^x mod p.  To comply with this memo, m MUST
+   be >=160 bits in length, (consequently, q MUST be at least 160 bits
+   long). When symmetric ciphers stronger than DES are to be used, a
+   larger m may be advisable. p must be a minimum of 512 bits long.
+
+Security Considerations
+
+   All the security in this system is provided by the secrecy of the
+   private keying material. If either sender or recipient private keys
+   are disclosed, all messages sent or received using that key are
+   compromised. Similarly, loss of the private key results in an
+   inability to read messages sent using that key.
+
+   Static Diffie-Hellman keys are vulnerable to a small subgroup attack
+   [LAW98]. In practice, this issue arises for both sides in Static-
+   Static mode and for the receiver during Ephemeral-Static mode.
+   Sections 2.3 and 2.4 describe appropriate practices to protect
+   against this attack. Alternatively, it is possible to generate keys
+   in such a fashion that they are resistant to this attack. See [LL97]
+
+   The security level provided by these methods depends on several
+   factors. It depends on the length of the symmetric key (typically, a
+   2^l security level if the length is l bits); the size of the prime q
+   (a 2^{m/2} security level); and the size of the prime p (where the
+   security level grows as a subexponential function of the size in
+   bits).  A good design principle is to have a balanced system, where
+   all three security levels are approximately the same. If many keys
+   are derived from a given pair of primes p and q, it may be prudent to
+   have higher levels for the primes. In any case, the overall security
+   is limited by the lowest of the three levels.
