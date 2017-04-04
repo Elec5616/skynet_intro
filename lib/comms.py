@@ -14,7 +14,7 @@ class StealthConn(object):
         self.initiate_session()
 
     def initiate_session(self):
-        # Perform the initial connection handshake for agreeing on a shared secret
+        # Perform the initial connection handshake for agreeing on a shared secret 
 
         ### TODO: Your code here!
         # This can be broken into code run just on the server or just on the client
