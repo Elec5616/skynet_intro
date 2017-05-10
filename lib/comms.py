@@ -17,7 +17,7 @@ class StealthConn(object):
         # Perform the initial connection handshake for agreeing on a shared secret 
 
         ### TODO: Your code here!
-        # This can be broken into code run just on the server or just on the client
+        # This can be broken into code run just on the server or just on the clientasdsad
         if self.server or self.client:
             my_public_key, my_private_key = create_dh_key()
             # Send them our public key
