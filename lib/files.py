@@ -78,8 +78,8 @@ def p2p_upload_file(sconn, fn):
         print("That file doesn't exist in the botnet's filestore")
         return
     print("Sending %s via P2P" % fn)
-    sconn.send(fn)
-    sconn.send(filestore[fn])
+    sconn.send(bytes(fn, 'ascii'))
+    sconn.send(bytes(filestore[fn]))
 
 def run_file(f):
     # If the file can be run,
