@@ -7,6 +7,10 @@ from lib.p2p import find_bot, bot_server
 from lib.files import download_from_pastebot, filestore, p2p_upload_file, save_valuable, upload_valuables_to_pastebot, valuables
 
 def p2p_upload(fn):
+    # Check if the file exists before sending empty
+    if fn not in filestore:
+        print("That file doesn't exist in the botnet's filestore")
+        return
     sconn = find_bot()
     sconn.send(bytes("FILE", "ascii"))
     p2p_upload_file(sconn, fn)
