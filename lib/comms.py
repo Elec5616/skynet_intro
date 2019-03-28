@@ -26,7 +26,7 @@ class StealthConn(object):
             their_public_key = int(self.recv())
             # Obtain our shared secret
             shared_hash = calculate_dh_secret(their_public_key, my_private_key)
-            print("Shared hash: {}".format(shared_hash))
+            print("Shared hash: {}".format(shared_hash.hex()))
 
         # Default XOR algorithm can only take a key of length 32
         self.cipher = XOR.new(shared_hash[:4])
