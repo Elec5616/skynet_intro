@@ -1,8 +1,8 @@
 import struct
 
-from Crypto.Cipher import XOR
-
 from dh import create_dh_key, calculate_dh_secret
+from .xor import XOR
+
 
 class StealthConn(object):
     def __init__(self, conn, client=False, server=False, verbose=False):
