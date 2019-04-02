@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from Crypto.Hash import SHA256
 from Crypto.Random import random
 
@@ -20,13 +22,13 @@ prime = read_hex(raw_prime)
 
 # Project TODO: write the appropriate code to perform DH key exchange
 
-def create_dh_key():
+def create_dh_key() -> Tuple[int, int]:
     # Creates a Diffie-Hellman key
     # Returns (public, private)
     a = random.randint(0, int(2**8))
     return (a, a)
 
-def calculate_dh_secret(their_public, my_private):
+def calculate_dh_secret(their_public: int, my_private: int) -> bytes:
     # Calculate the shared secret
     shared_secret = their_public * my_private
 
@@ -36,5 +38,5 @@ def calculate_dh_secret(their_public, my_private):
     # (b) We can convert to raw bytes easily
     # (c) We could add additional information if we wanted
     # Feel free to change SHA256 to a different value if more appropriate
-    shared_hash = SHA256.new(bytes(str(shared_secret), "ascii")).hexdigest()
+    shared_hash = SHA256.new(str(shared_secret).encode()).digest()
     return shared_hash
